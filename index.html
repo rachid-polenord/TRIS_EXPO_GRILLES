@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>Classeur d'images</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2430;background:#f4f5f7;display:flex;height:100vh}
+button{font:inherit;border:1px solid #d9dce3;background:#fff;color:#1f2430;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s}
+button:hover{background:#eef0f4}
+#bPdf{background:#1f2430;color:#fff;border-color:#1f2430}#bPdf:hover{background:#363d4f}
+#side{width:240px;flex:none;background:#fff;border-right:1px solid #e4e6eb;padding:16px 12px;overflow:auto}
+#side h3{margin:0 0 10px 4px;font-size:15px;font-weight:600}
+#side p{color:#7a8190;font-size:12px;margin:12px 4px}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#bar{padding:10px 14px;background:#fff;border-bottom:1px solid #e4e6eb;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#bar label{color:#7a8190}#info{color:#7a8190;margin-left:auto}
+#grid{flex:1;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--w,200px),1fr));gap:16px;align-content:start}
+.tagrow{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;cursor:pointer}
+.tagrow:hover{background:#f0f2f5}.tagrow.act{background:#e8edff;font-weight:600}
+.tagrow.over{background:#fff1c2;outline:2px dashed #e0b400}
+.tagrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tagrow>span:last-of-type{color:#7a8190;font-size:12px}
+.tagrow input[type=color]{width:14px;height:14px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}
+.tagrow input[type=color]::-webkit-color-swatch-wrapper{padding:0}.tagrow input[type=color]::-webkit-color-swatch{border:0;border-radius:50%}
+.sw{width:10px;height:10px;border-radius:50%;flex:none}.tagrow .cp{opacity:0}.tagrow:hover .cp{opacity:1}
+.tagrow button{padding:0 4px;border:0;background:none;color:#9aa1af;opacity:0}
+.tagrow:hover button{opacity:1}
+.card{background:#fff;border-radius:12px;padding:8px;position:relative;user-select:none;cursor:grab;box-shadow:0 1px 3px rgba(20,25,40,.08);transition:box-shadow .15s}
+.card:hover{box-shadow:0 4px 14px rgba(20,25,40,.14)}
+.card.sel{box-shadow:0 0 0 2px #3b5bdb}
+.card.drag{opacity:.3}
+.card img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#e9ebf0;display:block;pointer-events:none}
+.chk{position:absolute;top:14px;left:14px;opacity:0;transition:opacity .15s;line-height:0}
+.card:hover .chk,.card.sel .chk{opacity:1}
+.chk input{width:18px;height:18px;margin:0;cursor:pointer}
+.fn{font-size:11px;color:#8a91a0;margin:6px 2px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chips{display:flex;gap:5px;margin:4px 2px 6px}
+.dot{width:10px;height:10px;border-radius:50%;cursor:pointer;border:1.5px solid;opacity:.35;transition:opacity .15s,transform .15s}
+.dot:hover{opacity:1;transform:scale(1.25)}.dot.on{opacity:1}
+.ptags{display:none}
+.note{border-radius:6px;min-height:30px;padding:4px 6px;cursor:text;user-select:text;font-size:12px;background:rgba(120,130,150,.08)}
+.note:focus{outline:2px solid #c5d0ff;background:#fff}
+.note:empty:before{content:"Légende…";color:#a9afbb}
+.card.miss img{opacity:.15}.card.miss .fn:after{content:' (introuvable dans images/)';color:#c0392b}
+.ghost{position:fixed;pointer-events:none;width:90px;opacity:.9;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:9}
+.ghost img{width:100%;display:block}
+@media print{
+ @page{size:A4 landscape;margin:10mm}
+ body{display:block;height:auto;background:#fff}#main{display:block}
+ #side,#bar,.chk,.fn,.chips{display:none!important}
+ #grid{display:grid!important;grid-template-columns:repeat(4,1fr);overflow:visible;padding:0;gap:10px}
+ .card{-webkit-print-color-adjust:exact;print-color-adjust:exact;break-inside:avoid;box-shadow:none;border:1px solid #ccc;cursor:default}.card.sel{box-shadow:none}
+ .ptags{display:block;font-size:10px;color:#666;margin:4px 2px 0}
+ .card.out,.note:empty{display:none}.note{background:none;padding:4px 2px}
+}
+</style></head><body>
+<div id="side"><h3>Tags</h3><div id="tags"></div><p><button id="addTag">+ Nouveau tag</button></p>
+<p style="color:#666;font-size:12px">Sous chaque image, les points de couleur sont les tags : cliquez sur un point pour l'allumer ou l'éteindre (le nom s'affiche au survol). Ici, un clic sur un tag filtre l'affichage ; ✎ renomme, × supprime. Vous pouvez aussi glisser une image sur un tag.</p><p id="etat" style="font-size:12px"></p></div>
+<div id="main"><div id="bar">
+<button id="bFolder">Charger un dossier</button><button id="bFiles">Ajouter des images</button>
+<button id="bClear" title="Efface les images, garde les tags">Nouvelle liste</button><button id="bSort" title="Regroupe les images dans l'ordre des tags, les images sans tag à la fin">Trier par tag</button><button id="bAll">Cocher les visibles</button><button id="bNone">Tout décocher</button>
+<label>Taille <input type="range" id="zoom" min="110" max="420" value="200"></label>
+<button id="bExp">Exporter JSON</button><button id="bGit" title="Crée classeur_data.js à placer à côté de la page, puis à publier sur GitHub">Exporter pour GitHub</button><button id="bImp">Importer JSON</button>
+<button id="bShared" title="Abandonne vos modifications locales et recharge la version publiée">Version partagée</button><button id="bPdf"><b>Exporter la sélection en PDF</b></button><span id="info"></span>
+<input type="file" id="fFolder" webkitdirectory multiple hidden><input type="file" id="fFiles" accept="image/*" multiple hidden><input type="file" id="fJson" accept=".json" hidden>
+</div><div id="grid"></div></div>
+<script src="classeur_data.js"></script>
+<script>
+const $=id=>document.getElementById(id),grid=$('grid');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DEF=[["Ateliers STIB","#b5651d"],["Bâtiment (abandon, plans)","#555555"],["Rinking","#2a7f62"],["Spectacles et culture","#a23b72"],["Jeunesse et activités","#1f6fb2"],["Visite du Roi","#b8860b"]];
+// clé d'une image = nom sans préfixe « pixelbatch- » ni extension : les deux listes se reconnaissent
+const norm=n=>n.replace(/^pixelbatch-/i,'').replace(/\.(jpe?g|png|gif|webp)$/i,'').toLowerCase();
+function mig(s){const it={},o=[];Object.keys(s.items).forEach(n=>{const k=norm(n);if(!it[k])it[k]=s.items[n];else{const a=it[k],b=s.items[n];a.tags=[...new Set(a.tags.concat(b.tags))];a.note=a.note||b.note;a.sel=a.sel||b.sel}});
+ s.order.forEach(n=>{const k=norm(n);if(!o.includes(k)&&it[k])o.push(k)});Object.keys(it).forEach(k=>{if(!o.includes(k))o.push(k)});s.items=it;s.order=o;return s}
+let names={};
+let S={tags:DEF.map((d,i)=>({id:'t'+i,name:d[0],color:d[1]})),items:{},order:[]},files={},F=new Set();
+// données partagées (fichier classeur_data.js, publié avec la page) ; le travail local reste prioritaire tant que la version partagée n'a pas changé
+const SH=window.CLASSEUR||null;let local=null;
+try{local=JSON.parse(localStorage.getItem('classeur'))}catch(e){}
+if(SH&&!(local&&local.tags&&local.base===SH.date))S=mig(JSON.parse(JSON.stringify(SH)));
+else if(local&&local.tags)S=mig(local);
+if(SH)S.base=SH.date;
+{const e=$('etat'),d=SH&&SH.date?new Date(SH.date).toLocaleString('fr-BE'):'';
+ if(!SH){e.textContent='⚠ classeur_data.js introuvable : la page n\'a pas reçu de données partagées (vérifiez son nom et qu\'il est dans le même dossier que la page).';e.style.color='#c0392b'}
+ else{const loc=local&&local.tags&&local.base===SH.date;e.textContent='Données partagées du '+d+(loc?' — vos modifications locales sont affichées (bouton « Version partagée » pour les abandonner).':'.')}}
+const save=()=>{try{localStorage.setItem('classeur',JSON.stringify(S))}catch(e){}};
+const tg=id=>S.tags.find(t=>t.id===id);
+const vis=n=>{if(!F.size)return true;const t=S.items[n].tags;return[...F].some(f=>f==='_'?!t.length:t.includes(f))};
+function addFiles(list){[...list].filter(f=>f.type.startsWith('image/')||/\.(jpe?g|png|gif|webp)$/i.test(f.name)).forEach(f=>{
+ const k=norm(f.name);names[k]=f.name;files[k]=URL.createObjectURL(f);
+ if(!S.items[k])S.items[k]={tags:[],note:'',sel:false};
+ if(!S.order.includes(k))S.order.push(k)});render()}
+function side(){const T=$('tags');T.innerHTML='';
+ const row=(id,name,color,count)=>{const r=document.createElement('div');r.className='tagrow'+(F.has(id)?' act':'');r.dataset.id=id;
+  r.innerHTML=(color?'<span class="sw" style="background:'+color+'"></span>':'')+'<span class="nm">'+esc(name)+'</span><span>'+count+'</span>'+(color?'<input type="color" class="cp" title="Couleur" value="'+color+'"><button class="ed" title="Renommer">✎</button><button class="del" title="Supprimer">×</button>':'');
+  r.onclick=e=>{if(e.target.closest('input,button'))return;F.has(id)?F.delete(id):F.add(id);render()};
+  if(color){r.querySelector('.ed').onclick=()=>{const n=prompt('Nouveau nom du tag',name);if(n){tg(id).name=n;render()}};
+   r.querySelector('input').onchange=e=>{tg(id).color=e.target.value;render()};
+   r.querySelector('.del').onclick=()=>{if(confirm('Supprimer le tag « '+name+' » ?')){S.tags=S.tags.filter(t=>t.id!==id);Object.values(S.items).forEach(i=>i.tags=i.tags.filter(x=>x!==id));F.delete(id);render()}}}
+  T.append(r)};
+ const ex=S.order.filter(n=>files[n]);
+ const r0=document.createElement('div');r0.className='tagrow'+(F.size?'':' act');r0.dataset.id='all';r0.innerHTML='<span class="nm">Toutes les images</span><span>'+ex.length+'</span>';r0.onclick=()=>{F.clear();render()};T.append(r0);
+ S.tags.forEach(t=>row(t.id,t.name,t.color,ex.filter(n=>S.items[n].tags.includes(t.id)).length));
+ row('_','Sans tag',null,ex.filter(n=>!S.items[n].tags.length).length)}
+function card(n){const it=S.items[n],c=document.createElement('div');c.className='card'+(it.sel?' sel':'');c.dataset.n=n;
+ c.innerHTML='<label class="chk nodrag"><input type="checkbox"'+(it.sel?' checked':'')+'></label><img src="'+files[n]+'"><div class="fn" title="'+esc(names[n]||n)+'">'+esc(names[n]||n)+'</div><div class="chips"></div><div class="note nodrag" contenteditable="true"></div>';
+ c.querySelector('img').onerror=()=>c.classList.add('miss');
+ const note=c.querySelector('.note');note.textContent=it.note;note.oninput=()=>{it.note=note.innerText;save()};
+ c.querySelector('input').onchange=e=>{it.sel=e.target.checked;c.classList.toggle('sel',it.sel);save()};
+ const ch=c.querySelector('.chips');
+ S.tags.forEach(t=>{const on=it.tags.includes(t.id),d=document.createElement('span');d.className='dot nodrag'+(on?' on':'');d.title=t.name;d.style.borderColor=t.color;d.style.background=on?t.color:'transparent';
+  d.onclick=()=>{it.tags=on?it.tags.filter(x=>x!==t.id):it.tags.concat(t.id);render()};ch.append(d)});
+ const pt=document.createElement('div');pt.className='ptags';pt.textContent=it.tags.map(id=>tg(id)).filter(Boolean).map(t=>t.name).join(', ');c.append(pt);
+ // la carte prend la couleur de son tag (fond teinté + bande en haut ; plusieurs tags = bande partagée)
+ const cols=it.tags.map(tg).filter(Boolean).map(t=>t.color);
+ if(cols.length){c.style.backgroundColor='color-mix(in srgb,'+cols[0]+' 16%,#fff)';
+  c.style.backgroundImage='linear-gradient(to right,'+cols.map((x,i)=>x+' '+i*100/cols.length+'% '+(i+1)*100/cols.length+'%').join(',')+')';
+  c.style.backgroundSize='100% 5px';c.style.backgroundRepeat='no-repeat'}
+ return c}
+function render(){side();grid.innerHTML='';const v=S.order.filter(n=>files[n]&&vis(n));v.forEach(n=>grid.append(card(n)));
+ $('info').textContent=v.length+' image(s) affichée(s), '+S.order.filter(n=>files[n]&&S.items[n].sel).length+' cochée(s)';save()}
+// glisser-déposer au pointeur
+let D=null;
+grid.addEventListener('pointerdown',e=>{const c=e.target.closest('.card');if(!c||e.target.closest('.nodrag')||e.button)return;D={c,x:e.clientX,y:e.clientY,on:false}});
+addEventListener('pointermove',e=>{if(!D)return;
+ if(!D.on){if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<6)return;D.on=true;D.c.classList.add('drag');D.g=document.createElement('div');D.g.className='ghost';D.g.innerHTML='<img src="'+D.c.querySelector('img').src+'">';document.body.append(D.g)}
+ D.g.style.left=e.clientX+10+'px';D.g.style.top=e.clientY+10+'px';
+ const el=document.elementFromPoint(e.clientX,e.clientY);D.tag=el&&el.closest('.tagrow');
+ document.querySelectorAll('.tagrow').forEach(t=>t.classList.toggle('over',t===D.tag&&(t.dataset.id||'')[0]==='t'));
+ const t=el&&el.closest('.card');
+ if(t&&t!==D.c){const r=t.getBoundingClientRect();grid.insertBefore(D.c,e.clientX>r.left+r.width/2?t.nextSibling:t)}
+ const gr=grid.getBoundingClientRect();if(e.clientY<gr.top+40)grid.scrollTop-=15;else if(e.clientY>gr.bottom-40)grid.scrollTop+=15});
+addEventListener('pointerup',()=>{if(!D)return;
+ if(D.on){D.g.remove();D.c.classList.remove('drag');
+  if(D.tag&&D.tag.dataset.id[0]==='t'){const id=D.tag.dataset.id,names=S.items[D.c.dataset.n].sel?S.order.filter(n=>files[n]&&S.items[n].sel):[D.c.dataset.n];
+   names.forEach(n=>{if(!S.items[n].tags.includes(id))S.items[n].tags.push(id)})}
+  else{const v=[...grid.children].map(c=>c.dataset.n),pos=S.order.map((n,i)=>v.includes(n)?i:-1).filter(i=>i>=0);pos.forEach((p,k)=>S.order[p]=v[k])}
+  render()}
+ D=null});
+// boutons
+$('bFolder').onclick=()=>$('fFolder').click();$('bFiles').onclick=()=>$('fFiles').click();
+$('fFolder').onchange=e=>addFiles(e.target.files);$('fFiles').onchange=e=>addFiles(e.target.files);
+$('zoom').oninput=e=>grid.style.setProperty('--w',e.target.value+'px');
+$('addTag').onclick=()=>{const n=prompt('Nom du nouveau tag');if(n){S.tags.push({id:'t'+Date.now(),name:n,color:'#444444'});render()}};
+$('bClear').title='Efface les images, garde les tags (le dossier images/ est rechargé à la prochaine ouverture)';$('bClear').onclick=()=>{if(confirm('Retirer toutes les images (ordre, légendes et tags posés sur les images) ? Les tags eux-mêmes sont conservés.')){S.items={};S.order=[];files={};F.clear();render()}};
+$('bSort').onclick=()=>{if(!confirm('Réordonner toutes les images par tag (dans l\'ordre de la liste de gauche, les images sans tag à la fin) ?'))return;
+ const ix=n=>{const t=S.items[n].tags.map(id=>S.tags.findIndex(x=>x.id===id)).filter(i=>i>=0);return t.length?Math.min(...t):999};
+ S.order=S.order.map((n,i)=>[n,i]).sort((a,b)=>ix(a[0])-ix(b[0])||a[1]-b[1]).map(x=>x[0]);render()};
+$('bAll').onclick=()=>{[...grid.children].forEach(c=>S.items[c.dataset.n].sel=true);render()};
+$('bNone').onclick=()=>{Object.values(S.items).forEach(i=>i.sel=false);render()};
+$('bExp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='classeur_images.json';a.click()};
+$('bGit').onclick=()=>{S.date=new Date().toISOString();S.base=S.date;save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['window.CLASSEUR='+JSON.stringify(S,null,1)+';'],{type:'text/javascript'}));a.download='classeur_data.js';a.click()};
+$('bShared').onclick=()=>{if(confirm('Abandonner vos modifications locales et recharger la version partagée ?')){try{localStorage.removeItem('classeur')}catch(e){}location.reload()}};
+$('bImp').onclick=()=>$('fJson').click();
+$('fJson').onchange=e=>{const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.tags||!s.items)throw 0;S=mig(s);S.base=SH&&SH.date;F.clear();render()}catch(x){alert('Fichier JSON non valide')}};r.readAsText(e.target.files[0])};
+$('bPdf').onclick=()=>{const any=S.order.some(n=>files[n]&&S.items[n].sel);
+ if(any)[...grid.children].forEach(c=>c.classList.toggle('out',!S.items[c.dataset.n].sel));
+ window.print();[...grid.children].forEach(c=>c.classList.remove('out'))};
+// Liste des fichiers du dossier « images » (placé à côté de cette page)
+const DOSSIER='images/',LISTE=["pixelbatch--05-1989.jpg", "pixelbatch-0I5A0617.jpg", "pixelbatch-0I5A0659.jpg", "pixelbatch-0I5A2471.jpg", "pixelbatch-0I5A2480.jpg", "pixelbatch-0I5A2572.jpg", "pixelbatch-10 ans PN_Espace nâques-6.jpg", "pixelbatch-10 ans PN_.jpg", "pixelbatch-1992-09, Bruxelles, Atelier de la Chaussée d'Anvers (1)_flickr.jpg", "pixelbatch-1992-09, Bruxelles, Atelier de la Chaussée d'Anvers (4)_flickr.jpg", "pixelbatch-32606772023_fa06b611b2_k.jpg", "pixelbatch-33421003795_fa096291cf_k.jpg", "pixelbatch-337022904_1549215035603091_1827235304242869289_n.jpg", "pixelbatch-3470 1027 Ch Anvers 1930.jpg", "pixelbatch-3489 L46 Ch Anvers 04-1958 à 25-06-1961.jpg", "pixelbatch-38958940855_95f3e387d8_k.jpg", "pixelbatch-48821281116_ff47c1305b_k.jpg", "pixelbatch-48857922748_2b4f2111c2_c.jpg", "pixelbatch-48858256356_41476075f1_k.jpg", "pixelbatch-48858277556_5639aab364_k.jpg", "pixelbatch-6594539971_f099646255_b.jpg", "pixelbatch-7007 7123 At Ch Anvers JMPholien env 1973.jpg", "pixelbatch-Affiche  1910.jpg", "pixelbatch-à Pole Nord.jpg", "pixelbatch-archives_mozaique_couleur_1.jpg", "pixelbatch-archives_mozaique_couleur_2.jpg", "pixelbatch-archives_mozaique_couleur_3_compressed.jpg", "pixelbatch-archives_plan_architecte.jpg", "pixelbatch-article_1872.jpg", "pixelbatch-article.jpg", "pixelbatch-Bruxelles Rinking_la piste.jpg", "pixelbatch-Ch Anvers JMPholien env 1973.jpg", "pixelbatch-Chaussée d'Anvers 210_1993.jpg", "pixelbatch-Chaussée d'Anvers 210_aujourd'hui.jpg", "pixelbatch-Concert sosie de Elvis Presley en.jpg", "pixelbatch-Cours d'alphabetisation_1.jpg", "pixelbatch-Cours d'alphabetisation_2.jpg", "pixelbatch-CP_Sporting Palace Rinking.jpg", "pixelbatch-culture pectacle_1.jpg", "pixelbatch-culture pectacle_2.jpg", "pixelbatch-culture pectacle_3.jpg", "pixelbatch-Dans les coulisses..jpg", "pixelbatch-EDAN1326.jpg", "pixelbatch-etudiante.jpg", "pixelbatch-IMG_20161210_141838.jpg", "pixelbatch-IMG_20170208_161048_resized_20170209_113336648.jpg", "pixelbatch-IMG_2536.jpg", "pixelbatch-IMG_2677.jpg", "pixelbatch-IMG_7546.jpg", "pixelbatch-IMG_9542.jpg", "pixelbatch-IMG_9570.jpg", "pixelbatch-impulsion_2.jpg", "pixelbatch-impulsion.jpg", "pixelbatch-Invitation à la pièce Mémoires.jpg", "pixelbatch-Le_Roi_1.jpg", "pixelbatch-Le_Roi_2.jpg", "pixelbatch-Le_Roi qsite.jpg", "pixelbatch-Le_Roi_questions_reponse.jpg", "pixelbatch-Le_Roi_salle_de_sport.jpg", "pixelbatch-Le_Roi_sur_scene.jpg", "pixelbatch-Merci au  centre PN.jpg", "pixelbatch-_MG_1621.jpg", "pixelbatch-_MG_1944.jpg", "pixelbatch-Mise en place d'Pole Nord..jpg", "pixelbatch-photo Bruno De Jonghe.jpg", "pixelbatch-Picture3.jpg", "pixelbatch-Picture5.jpg", "pixelbatch-Picture6.jpg", "pixelbatch-Picture9.jpg", "pixelbatch-PN archive batiment 210.jpg", "pixelbatch-R671 Ch31 R29 At Ch Anvers MBrosteaux 19-07-1961.jpg", "pixelbatch-Représentation le 21 mars 2015.jpg", "pixelbatch-spectacle clown monocycle.jpg", "pixelbatch-STP60275.jpg", "pixelbatch-STP60282.jpg", "pixelbatch-STP60312.jpg", "pixelbatch-STP60313.jpg", "pixelbatch-streetcar-pulling-horses.jpg"];
+function chargerDossier(){LISTE.forEach(n=>{const k=norm(n);names[k]=n;files[k]=DOSSIER+encodeURIComponent(n);
+ if(!S.items[k])S.items[k]={tags:[],note:'',sel:false};if(!S.order.includes(k))S.order.push(k)})}
+chargerDossier();
+render();
+</script></body></html>
